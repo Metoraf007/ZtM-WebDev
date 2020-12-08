@@ -1,0 +1,131 @@
+﻿#region In-Script Functions
+
+function Get-SuspiciousHash {
+    param(
+        $FilePath,
+        $FileHash
+    )
+
+    $Export = @()
+    foreach ($path in $FilePath){
+    
+        foreach ($hash in $FileHash){
+            $FileList = Get-ChildItem -Path $path -File | Get-FileHash -Algorithm SHA1 -ea sil | Where-Object hash -eq $hash | Select-Object @{N = 'fault'; E = {'Suspicious File Hash'}}, Algorithm, Hash, Path
+            $Export += $FileList
+        }
+    }
+
+    return $Export
+}
+
+function Get-SuspiciousFile {
+    param(
+        $FilePath,
+        $FileName
+    )
+
+    $Export = @()
+    foreach ($path in $FilePath){
+    
+        foreach ($name in $FileName){
+
+            $FileList = Get-ChildItem -Path $path -File | Get-FileHash -Algorithm SHA1 -ea sil | Where-Object path -like "*\$name" | Select-Object @{N = 'fault'; E = {'Suspicious File Name'}}, Algorithm, Hash, Path
+            $Export += $FileList
+        }
+    }
+
+    return $Export
+}
+
+function Get-SuspiciousWebShell {
+    param(
+        $FilePath,
+        $FileList,
+        $String
+    )
+
+    $Export = @()
+    foreach ($path in $FilePath){
+        foreach ($str in $String){
+            Get-ChildItem -Path $path -File -ea SilentlyContinue | 
+                Foreach-object {
+                    if ((Get-Content $_.FullName) -match $str) {
+                        $Export += $_ | Get-FileHash -Algorithm SHA1 | Select-Object @{N = 'fault'; E = {'Suspicious WebShell String'}}, Algorithm, Hash, Path
+                    }elseif ($_.name -in $FileList){
+                        $Export += $_ | Get-FileHash -Algorithm SHA1 | Select-Object @{N = 'fault'; E = {'Suspicious WebShell'}}, Algorithm, Hash, Path
+                    }
+                }
+            }
+    }
+    
+    return $Export
+}
+
+function Get-SuspiciousFileCreation {
+    param(
+        $FilePath,
+        $Extention
+    )
+
+    $Export = @()
+    foreach ($path in $FilePath){
+    
+        foreach ($Ext in $Extention){
+
+            $FileList = Get-ChildItem -Path $path -File | Where-Object {($_.Extension -eq $Ext) -and ($_.CreationTime -gt (get-date).AddDays(-30) )} | Get-FileHash -Algorithm SHA1 -ea sil | Select-Object @{N = 'fault'; E = {'Suspicious New EXE File'}}, Algorithm, Hash, Path
+            $Export += $FileList
+        }
+    }
+
+    return $Export
+}
+
+function Remove-OldFiles {
+    Param
+    (
+        $Path = "D:\LogFiles",
+        [int]$DaysBack = 90,
+        $nameFilter
+    )
+
+    Get-ChildItem -path $Path -recurse | 
+        Where-Object {(-not ($_.PSIsContainer)) -and (($_.lastwritetime -lt (Get-Date).adddays(-$DaysBack))) -and ($_.Name -LIke "*$nameFilter*")}| Remove-Item -Force
+}
+
+#endregion
+
+#region Search Parameters
+$fileExtention = ".exe"
+$filePath = 'C:\windows\', 'C:\programdata\'
+$fileHash = 'DBA1DCE5BFE40290BD378A0126492569BDABC39', 'ed89d0a5a99e2d7624288392fe343e2a8a03ce42', '081fb308d581c8289ea3fb08c708a63d83f137ee', '2d3692c007fcdbf799a7eeaee2fa7e493e304f27', '349ace280d6cff54b7e3482a41ab008971563b7d', '8ab40f42e64b78801449e89e576a16a2e88b3642', '5b80eb5c27cb545a3d49b00d92fe17ea00796a5d', '674a22c37a03135b9bd86395047de2d0c2102e93'ע
+$fileName = "cmd.exe", "p.txt", "usbserial.exe", "msconfig1.bin", "msconfig.bin", "msconfig.exe", "w3handler.dll", "ls.exe", "s.exe", "si.exe", "i.exe", "loader.bin", "loader.exe", "wh2.txt", "run.bat", "TOIJIIHVRWIJQAU.zip", "lsass.dmp", "log.txt"
+
+$ShellFiles = "roles.aspx", "Metaweblogs.aspx","CreateAdAccount.aspx", "createAdAccount.cs.aspx"
+$ShellFolders = "C:\Program Files\Common Files\microsoft shared\Web Server Extentions\14\TEMPLATE\LAYOUTS", "C:\Program Files\Common Files\microsoft shared\Web Server Extentions\15\TEMPLATE\LAYOUTS", "C:\Program Files\Common Files\microsoft shared\Web Server Extentions\16\TEMPLATE\LAYOUTS"
+$ShellStrings = 'hr.QueryString\['
+
+#endregion
+
+
+#region __main__
+
+$FileFindings = Get-SuspiciousFile -FilePath $filePath -FileName $fileName
+$HashFindings = Get-SuspiciousHash -FilePath $filePath -FileHash $fileHash
+$WebShellFindings = Get-SuspiciousWebShell -FilePath $ShellFolders -FileList $ShellFiles -String $ShellStrings
+$FileCreationFindings = Get-SuspiciousFileCreation -FilePath $filePath -Extention $fileExtention
+
+if ($FileFindings -or $HashFindings -or $WebShellFindings -or $FileCreationFindings){
+    $Path = "C:\users\public\BreachDetector"
+    if (-not(Test-Path -Path $Path )){
+        New-Item -Path $Path -ItemType directory | Out-Null
+    }
+    $fileName = 'APTIOC_{0:ddMMyyyy_HHmmss}.json' -f (Get-Date)
+
+    Remove-OldFiles -Path $path -DaysBack 14 -nameFilter "APTIOC"
+
+    $Date = Get-Date -f "dd/MM/yyy HH:mm:ss K"
+    $Findings = $FileFindings, $HashFindings, $WebShellFindings, $FileCreationFindings |  Where-Object {$_.fault -ne $null}
+    @{"Host" = $env:COMPUTERNAME}, @{"Date" = $Date}, $Findings, @{"Findings" = $Findings.Count} | ConvertTo-Json | Out-File -FilePath "$Path\$fileName" -Force
+}
+
+#endregion

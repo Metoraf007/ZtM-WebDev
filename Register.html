@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Register</title>
+        <link rel="icon" type="image/png" href="psicon.png">
+    </head>
+    <body>
+        <h1>Register</h1>
+        <!--Comment Block-->
+        <form method="post">
+            First Name:     <input type="text" name="firstname" required></br>
+            Last Name:      <input type="text" name="lastname" required></br>
+            E-Mail Address: <input type="email" name="email" required></br>
+            Birthday:       <input type="date" name="bday" required></br>
+            Password:       <input type="password" name="psw" min="5" required></br>
+            Gender:<br>     <input type="radio" name="gender" value="male" checked>Male<br>
+                            <input type="radio" name="gender" value="female">Female</br>
+            Pets: <br>
+                <input type="checkbox" name="dog"> Dog <br>
+                <input type="checkbox" name="cat"> Cat <br>
+                <input type="checkbox" name="else"> else <br>
+            Cars: <br>
+            <select name="cars">
+                <option value="Volvo">Volvo</option>
+                <option value="Benz">Benz</option>
+            </select>
+            </br>
+            <input type="submit" value="Register"></br>
+            <input type="reset" value="Reset"></br>
+            
+        </form>
+    </body>
+</html>

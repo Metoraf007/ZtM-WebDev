@@ -1,0 +1,40 @@
+/*Comment*/
+/*Modifies everything*/
+* {
+    background-color: wheat;
+}
+h2 {
+    color: red;
+}
+p {
+    color: pink;
+    text-decoration: underline;
+    text-transform: uppercase;
+    line-height: 20px; /* space between lines */
+    font-style: italic;
+    font-weight: bold;
+    font-size: 150%;
+    font-family: Georgia, 'Times New Roman', Times, serif; /* print the text in the font that is available to the browser*/
+    font-family: Nunito; /* downloaded font using google fonts*/
+}
+
+img{
+    float: left; /* insert in img in text */
+}
+
+footer{
+    clear: both; /* clear desing after the float */
+    text-align: center;
+}
+/*Class tag*/
+.webtext {
+    border: 2px dashed green;
+    color: green;
+}
+/*id tag*/
+#div1 {
+    background-color: rgba(0,0,252,0.3);
+}
+#div2 {
+    background-color: rgba(252,0,0,0.3);
+}
